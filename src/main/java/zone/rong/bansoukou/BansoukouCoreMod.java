@@ -26,6 +26,10 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
     public BansoukouCoreMod() throws IOException {
         LOGGER.info("Ikimasu!");
         File bansoukouFolder = new File(Launch.minecraftHome, "bansoukou");
+        if (!bansoukouFolder.mkdir()) {
+            LOGGER.info("Nothing to patch at the moment!");
+            return;
+        }
         File[] patchRoot = bansoukouFolder.listFiles();
         if (!bansoukouFolder.exists() || patchRoot == null) {
             LOGGER.info("No patches found. Continuing with mod loading.");
