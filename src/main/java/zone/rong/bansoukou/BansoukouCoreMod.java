@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.ForgeVersion;
+import net.minecraftforge.fml.relauncher.CoreModManager;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,10 +27,7 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
     public BansoukouCoreMod() throws IOException {
         LOGGER.info("Ikimasu!");
         File bansoukouFolder = new File(Launch.minecraftHome, "bansoukou");
-        if (!bansoukouFolder.mkdir()) {
-            LOGGER.info("Nothing to patch at the moment!");
-            return;
-        }
+        bansoukouFolder.mkdir();
         File[] patchRoot = bansoukouFolder.listFiles();
         if (!bansoukouFolder.exists() || patchRoot == null) {
             LOGGER.info("No patches found. Continuing with mod loading.");
@@ -40,7 +38,6 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
         for (File file : patchRoot) {
             String fileName = file.getName().concat(".jar");
             Path path = new File(mods, fileName).toPath();
-            LOGGER.warn(path);
             if (Files.exists(path)) {
                 File pathFile = path.toFile();
                 try (RandomAccessFile raf = new RandomAccessFile(pathFile, "r")) {
@@ -80,6 +77,17 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
                                 }
                             }
                         });
+                Path meta$inf = fs.getPath("/META-INF");
+                if (Files.exists(meta$inf)) {
+                    Files.walk(meta$inf, 1).filter(p -> p.toString().endsWith(".SF")).forEach(p -> {
+                        try {
+                            LOGGER.info("Wiping signature file from {}, as we have tampered with the file.", zip);
+                            Files.delete(p);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+                }
             }
         }
     }

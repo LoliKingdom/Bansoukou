@@ -32,3 +32,9 @@ minecraft {
     clientJvmArgs.addAll(args)
     serverJvmArgs.addAll(args)
 }
+
+jar {
+    manifest.attributes(
+            "FMLCorePlugin": "zone.rong.bansoukou.BansoukouCoreMod"
+    )
+}
