@@ -12,8 +12,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.URI;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Map;
+import java.util.stream.Stream;
 import java.util.zip.ZipException;
 
 @IFMLLoadingPlugin.MCVersion(ForgeVersion.mcVersion)
@@ -56,43 +59,65 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
             File root = entry.getKey();
             File zip = entry.getValue();
             try (FileSystem fs = FileSystems.newFileSystem(zip.toPath(), null)) {
-                Files.walk(root.toPath())
-                        .map(Path::toFile)
-                        .filter(f -> !f.isDirectory())
-                        .forEach(f -> {
-                            Path currentPath = fs.getPath(root.toURI().relativize(f.toURI()).toString());
-                            try {
-                                work(f, currentPath);
-                            } catch (IOException e) {
-                                if (e instanceof NoSuchFileException) {
-                                    try {
-                                        Files.createDirectories(currentPath);
-                                        work(f, currentPath);
-                                    } catch (IOException e2) {
-                                        e2.printStackTrace();
-                                    }
+                try (Stream<Path> walk = Files.walk(root.toPath())) {
+                    walk.map(Path::toFile)
+                            .filter(f -> !f.isDirectory() || f.toString().endsWith(".DELETION"))
+                            .forEach(f -> {
+                                Path currentPath;
+                                if (f.isDirectory()) {
+                                    String fileUri = f.toURI().toString();
+                                    fileUri = fileUri.substring(0, fileUri.lastIndexOf('.'));
+                                    currentPath = fs.getPath(root.toURI().relativize(URI.create(fileUri)).toString());
                                 } else {
-                                    e.printStackTrace();
+                                    currentPath = fs.getPath(root.toURI().relativize(f.toURI()).toString());
                                 }
+                                try {
+                                    work(f, currentPath);
+                                } catch (IOException e) {
+                                    if (e instanceof NoSuchFileException) {
+                                        try {
+                                            Files.createDirectories(currentPath);
+                                            work(f, currentPath);
+                                        } catch (IOException e2) {
+                                            e2.printStackTrace();
+                                        }
+                                    } else {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            });
+                    Path meta$inf = fs.getPath("/META-INF");
+                    if (Files.exists(meta$inf)) {
+                        Files.walk(meta$inf, 1).filter(p -> p.toString().endsWith(".SF")).forEach(p -> {
+                            try {
+                                LOGGER.info("Wiping signature file from {}, as we have tampered with the file.", zip);
+                                Files.delete(p);
+                            } catch (IOException e) {
+                                e.printStackTrace();
                             }
                         });
-                Path meta$inf = fs.getPath("/META-INF");
-                if (Files.exists(meta$inf)) {
-                    Files.walk(meta$inf, 1).filter(p -> p.toString().endsWith(".SF")).forEach(p -> {
-                        try {
-                            LOGGER.info("Wiping signature file from {}, as we have tampered with the file.", zip);
-                            Files.delete(p);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    });
+                    }
                 }
             }
         }
     }
 
     private void work(File f, Path currentPath) throws IOException {
-        if (f.length() <= 0) {
+        if (f.isDirectory()) {
+            LOGGER.warn("Removing {} folder and anything under it...", currentPath);
+            Files.walkFileTree(currentPath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } else if (f.length() <= 0) {
             LOGGER.warn("Removing {}...", currentPath);
             Files.deleteIfExists(currentPath);
         } else {
