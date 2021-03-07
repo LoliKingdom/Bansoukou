@@ -14,7 +14,7 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
-version = '2.0'
+version = '3.0'
 group = 'zone.rong' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = 'bansoukou'
 
@@ -25,9 +25,7 @@ minecraft {
     runDir = "run"
     mappings = "stable_39"
     def args = [
-            '-Dfml.coreMods.load=zone.rong.bansoukou.BansoukouCoreMod',
-            '-Dmixin.hotSwap=true',
-            '-Dmixin.checks.interfaces=true'
+            '-Dfml.coreMods.load=zone.rong.bansoukou.BansoukouCoreMod'
     ]
     clientJvmArgs.addAll(args)
     serverJvmArgs.addAll(args)
@@ -35,6 +33,15 @@ minecraft {
 
 jar {
     manifest.attributes(
-            "FMLCorePlugin": "zone.rong.bansoukou.BansoukouCoreMod"
+            "FMLCorePlugin": "zone.rong.bansoukou.BansoukouCoreMod",
+            "TweakClass": "zone.rong.bansoukou.BansoukouTweaker",
+            "TweakOrder": -2147483647,
+            "Specification-Title": "Bansoukou",
+            "Specification-Vendor": "Rongmario",
+            "Specification-Version": 1,
+            "Implementation-Title": "Bansoukou",
+            "Implementation-Vendor": "Rongmario",
+            "Implementation-Version": 1,
+            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
     )
 }
