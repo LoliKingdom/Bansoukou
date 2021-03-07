@@ -13,8 +13,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URI;
+import java.nio.channels.FileLock;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import java.util.zip.ZipException;
@@ -26,6 +29,30 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 
     public static final Logger LOGGER = LogManager.getLogger("Bansoukou");
 
+    private static Thread watchThread;
+    private static WatchService service;
+    private static WatchKey key;
+
+    static {
+        try {
+            service = FileSystems.getDefault().newWatchService();
+            watchThread = new Thread(() -> {
+                while (true) {
+                    if (key != null) {
+                        try {
+                            service.take();
+                        } catch (InterruptedException e) {
+                            break;
+                        }
+                        key.pollEvents().forEach(e -> System.out.println("Event: " + e.kind() + " | Path: " + e.context()));
+                    }
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public BansoukouCoreMod() throws IOException {
         LOGGER.info("Ikimasu!");
         File bansoukouFolder = new File(Launch.minecraftHome, "bansoukou");
@@ -36,6 +63,7 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
             return;
         }
         File mods = new File(Launch.minecraftHome, "mods");
+        key = mods.toPath().register(service, StandardWatchEventKinds.ENTRY_DELETE);
         final Map<File, File> jars = new Object2ObjectOpenHashMap<>(patchRoot.length);
         for (File file : patchRoot) {
             String fileName = file.getName().concat(".jar");
@@ -100,6 +128,7 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
                 }
             }
         }
+        watchThread.start();
     }
 
     private void work(File f, Path currentPath) throws IOException {
