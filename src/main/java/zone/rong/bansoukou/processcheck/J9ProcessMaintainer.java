@@ -1,13 +1,15 @@
 package zone.rong.bansoukou.processcheck;
 
-import java.io.IOException;
-
 public class J9ProcessMaintainer implements ProcessMaintainer {
 
-    // TODO
+    private long pid = -1;
+
     @Override
-    public boolean checkExistence(String pid) throws IOException {
-        return false;
+    public boolean checkExistence(String pid) {
+        if (this.pid == -1) {
+            this.pid = Long.parseLong(pid);
+        }
+        return ProcessHandle.allProcesses().anyMatch(h -> h.pid() == this.pid);
     }
 
 }

@@ -1,6 +1,6 @@
 package zone.rong.bansoukou.processcheck;
 
-import net.minecraftforge.fml.exit.ExitOnSpawningNewProcess;
+import net.minecraftforge.fml.exit.QualifiedExit;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,7 +42,7 @@ public class ProcessMaintainerThread extends Thread {
             }
         }
         this.logger.info("Exiting...");
-        ExitOnSpawningNewProcess.exit(0);
+        QualifiedExit.exit(0);
     }
 
 }

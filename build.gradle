@@ -18,7 +18,7 @@ version = '3.0'
 group = 'zone.rong' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = 'bansoukou'
 
-sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
+sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = JavaVersion.VERSION_11
 
 minecraft {
     version = "1.12.2-14.23.5.2847"

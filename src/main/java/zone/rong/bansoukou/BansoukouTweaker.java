@@ -3,7 +3,7 @@ package zone.rong.bansoukou;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
-import net.minecraftforge.fml.exit.ExitOnSpawningNewProcess;
+import net.minecraftforge.fml.exit.QualifiedExit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.appender.RollingRandomAccessFileAppender;
@@ -149,7 +149,7 @@ public class BansoukouTweaker implements ITweaker {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        ExitOnSpawningNewProcess.exit(0);
+        QualifiedExit.exit(0);
     }
 
     @Override
