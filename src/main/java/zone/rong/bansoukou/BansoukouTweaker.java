@@ -1,242 +1,161 @@
 package zone.rong.bansoukou;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
+import net.minecraftforge.fml.exit.ExitOnSpawningNewProcess;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.appender.RollingRandomAccessFileAppender;
+import org.apache.logging.log4j.core.appender.rolling.RollingRandomAccessFileManager;
 
 import java.io.*;
-import java.net.URI;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
-import java.util.zip.ZipException;
+import java.lang.management.ManagementFactory;
+import java.lang.reflect.Field;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.jar.JarFile;
 
 public class BansoukouTweaker implements ITweaker {
 
     public static final Logger LOGGER = LogManager.getLogger("Bansoukou");
 
-    /*
-    private static Thread watchThread;
-    private static WatchService service;
-    private static WatchKey key;
+    private static final boolean debug = true;
 
-    static {
+    private static ArrayList loaderList;
+    private static Field loaderField;
 
+    // Special thanks to http://management-platform.blogspot.com/2009/01/classloaders-keeping-jar-files-open.html
+    // This is a debugging method
+    // It checks how many jars are loaded in the URLClassPath loaders before Bansoukou does any work
+    // Any jar loaded here means they have already been acted on in some way
+    // E.g. class loaded or ready to have its classes searched and loaded (coremods)
+    // If there are any coremods, we close the JarFile and set the field to null
+    // This allows the ClassLoader to open a new JarFile to read from
+    // This has to be done as ZipInputStream is an oneway operation (can't read bytes reversely)
+    static void openedJars() {
         try {
-            String line;
-            Process p = Runtime.getRuntime().exec(System.getenv("windir") +"\\system32\\"+"tasklist.exe");
-            BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            while ((line = input.readLine()) != null) {
-                System.out.println(line);
-            }
-            input.close();
-        } catch (Exception err) {
-            err.printStackTrace();
-        }
-
-        try {
-            service = FileSystems.getDefault().newWatchService();
-            watchThread = new Thread(() -> {
-                while (true) {
-                    if (key != null) {
-                        try {
-                            service.take();
-                        } catch (InterruptedException e) {
-                            break;
+            Class<URLClassLoader> clazz = URLClassLoader.class;
+            Field ucp = clazz.getDeclaredField("ucp");
+            ucp.setAccessible(true);
+            Object urlClassPath = ucp.get(Launch.classLoader);
+            Field loaders = urlClassPath.getClass().getDeclaredField("loaders");
+            loaders.setAccessible(true);
+            loaderList = (ArrayList) loaders.get(urlClassPath);
+            if (debug) {
+                for (Object jarLoader : loaderList) {
+                    try {
+                        if (loaderField == null) {
+                            loaderField = jarLoader.getClass().getDeclaredField("jar");
+                            loaderField.setAccessible(true);
                         }
-                        key.pollEvents().forEach(e -> System.out.println("Event: " + e.kind() + " | Path: " + e.context()));
-                    }
+                        Object jarFile = loaderField.get(jarLoader);
+                        LOGGER.warn(((JarFile) jarFile).getName());
+                    } catch (Throwable ignored) { }
                 }
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+            }
+        } catch (Throwable ignored) { }
     }
-
-    */
-
-    /*
-    public static void main(String[] args) throws IOException {
-    Path file = Paths.get("c:/touch.txt");
-    AclFileAttributeView aclAttr = Files.getFileAttributeView(file, AclFileAttributeView.class);
-    System.out.println(aclAttr.getOwner());
-    for (AclEntry aclEntry : aclAttr.getAcl()) {
-        System.out.println(aclEntry);
-    }
-    System.out.println();
-
-    UserPrincipalLookupService upls = file.getFileSystem().getUserPrincipalLookupService();
-    UserPrincipal user = upls.lookupPrincipalByName(System.getProperty("user.name"));
-    AclEntry.Builder builder = AclEntry.newBuilder();
-    builder.setPermissions( EnumSet.of(AclEntryPermission.READ_DATA, AclEntryPermission.EXECUTE,
-            AclEntryPermission.READ_ACL, AclEntryPermission.READ_ATTRIBUTES, AclEntryPermission.READ_NAMED_ATTRS,
-            AclEntryPermission.WRITE_ACL, AclEntryPermission.DELETE
-    ));
-    builder.setPrincipal(user);
-    builder.setType(AclEntryType.ALLOW);
-    aclAttr.setAcl(Collections.singletonList(builder.build()));
-}
-     */
 
     public BansoukouTweaker() throws IOException {
-        // watchThread.start();
         LOGGER.info("Ikimasu!");
-        File bansoukouRoot = new File(Launch.minecraftHome, "bansoukou");
-        if (bansoukouRoot.mkdir()) {
-            LOGGER.info("No bansoukou found. Perhaps it is the first load. Continuing with mod loading.");
-            return;
-        }
-        File[] patchRoot = bansoukouRoot.listFiles();
-        if (patchRoot == null) {
-            LOGGER.info("No patches found. Continuing with mod loading.");
-            return;
-        }
-        File mods = new File(Launch.minecraftHome, "mods");
-        // key = mods.toPath().register(service, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE);
-        final Map<File, File> jars = new Object2ObjectOpenHashMap<>(patchRoot.length);
-        for (File file : patchRoot) {
-            jars.put(file, patch(mods, file));
-        }
-        for (Map.Entry<File, File> entry : jars.entrySet()) {
-            File root = entry.getKey();
-            File zip = entry.getValue();
-            try (FileSystem fs = FileSystems.newFileSystem(zip.toPath(), null)) {
-                try (Stream<Path> walk = Files.walk(root.toPath())) {
-                    walk.map(Path::toFile)
-                            .filter(f -> !f.isDirectory() || f.toString().endsWith(".DELETION"))
-                            .forEach(f -> {
-                                Path currentPath;
-                                if (f.isDirectory()) {
-                                    String fileUri = f.toURI().toString();
-                                    fileUri = fileUri.substring(0, fileUri.lastIndexOf('.'));
-                                    currentPath = fs.getPath(root.toURI().relativize(URI.create(fileUri)).toString());
-                                } else {
-                                    currentPath = fs.getPath(root.toURI().relativize(f.toURI()).toString());
-                                }
-                                try {
-                                    work(f, currentPath);
-                                } catch (IOException e) {
-                                    if (e instanceof NoSuchFileException) {
-                                        try {
-                                            Files.createDirectories(currentPath);
-                                            work(f, currentPath);
-                                        } catch (IOException e2) {
-                                            e2.printStackTrace();
-                                        }
-                                    } else {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            });
-                    Path meta$inf = fs.getPath("/META-INF");
-                    if (Files.exists(meta$inf)) {
-                        Files.walk(meta$inf, 1).filter(p -> p.toString().endsWith(".SF")).forEach(p -> {
-                            try {
-                                LOGGER.info("Wiping signature file from {}, as we have tampered with the file.", zip);
-                                Files.delete(p);
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        });
-                    }
-                }
-            }
-        }
-        // LOGGER.info("Hooking diversions...");
-        // ModContainerFactory.instance().registerContainerType(Type.getType(Mod.class), BansoukouModContainer.class);
-    }
-
-    private File patch(File mods, File patchFile) throws IOException {
-        File modFile = new File(mods, patchFile.getName().concat(".jar"));
-        if (Files.exists(modFile.toPath()) || Files.exists((modFile = new File(mods, patchFile.getName().concat("-patched.jar"))).toPath())) {
-            try (RandomAccessFile raf = new RandomAccessFile(modFile, "r")) {
-                int start = raf.readInt();
-                if (start == 0x504B0304 || start == 0x504B0506 || start == 0x504B0708) {
-                    LOGGER.info("{} was found in the mods folder. Copying to modify the copied cache.", modFile.getName());
-                } else {
-                    throw LOGGER.throwing(new ZipException(modFile.getName() + " -> exists in the mods folder but isn't a valid jar file! Report to the pack author!"));
-                }
-            }
-            Path path = modFile.toPath();
-            File newFile = new File(mods, patchFile.getName() + "-patched.jar");
-            Files.copy(path, newFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            File mockFile = new File(mods, patchFile.getName().concat(".jar") + ".disabled"); // CurseForge workaround
-            if (!mockFile.exists()) {
-                Files.move(path, mockFile.toPath()); // No copy option as we don't want to override the base copy
-            }
-            /*
-            File mockFile = new File(mods, patchFile.getName().concat(".jar") + ".disabled"); // CurseForge workaround
-            if (!mockFile.exists()) {
-                Files.copy(path, mockFile.toPath()); // No copy option as we don't want to override the base copy
-            }
-            File newFile = new File(mods, patchFile.getName() + "-patched.jar");
-            // modFile.renameTo(newFile);
-            Files.move(path, newFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            // Files.copy(path, newFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-             */
-            return newFile;
-        } else {
-            throw LOGGER.throwing(new FileNotFoundException(patchFile.getName().concat(".jar") + " -> does not exist in mods folder! Perhaps the mod's name has changed? Report to the pack author!"));
-        }
         /*
-        String fileName = file.getName().concat(".jar");
-        File pathFile = new File(mods, fileName);
-        Path path = pathFile.toPath();
-        if (Files.exists(path)) {
-            try (RandomAccessFile raf = new RandomAccessFile(pathFile, "r")) {
-                int start = raf.readInt();
-                if (start == 0x504B0304 || start == 0x504B0506 || start == 0x504B0708) {
-                    LOGGER.info("{} was found in the mods folder. Copying to modify the copied cache.", fileName);
-                } else {
-                    throw LOGGER.throwing(new ZipException(fileName + " -> exists in the mods folder but isn't a valid jar file! Report to the pack author!"));
-                }
+        openedJars();
+        try {
+            for (Object jarLoader : loaderList) {
+                try {
+                    JarFile jarFile = (JarFile) loaderField.get(jarLoader);
+                    if (jarFile.getName().endsWith("EntityCulling-1.12.2-4.1.5.jar")) {
+                        Path currentPath = Paths.get(jarFile.getName());
+                        Path copyPath = Paths.get(currentPath.getParent().toString(), "EntityCulling-1.12.2-4.1.5.bansoukou");
+                        jarFile.close();
+                        loaderField.set(jarLoader, null);
+                        Files.copy(currentPath, copyPath, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                } catch (Throwable ignored) { }
             }
-            File mockFile = new File(mods, fileName + ".disabled"); // Curseforge workaround
-            Files.copy(path, mockFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            File newFile = new File(mods, file.getName() + "-patched.jar");
-            Files.move(path, newFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            // jars.put(file, newFile);
-            return newFile;
-        } else {
-            throw LOGGER.throwing(new FileNotFoundException(fileName + " -> does not exist in mods folder! Perhaps the mod's name has changed? Report to the pack author!"));
-        }
+        } catch (Exception ignored) { }
          */
     }
 
-    private void work(File f, Path currentPath) throws IOException {
-        if (f.isDirectory()) {
-            LOGGER.warn("Removing {} folder and anything under it...", currentPath);
-            Files.walkFileTree(currentPath, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    Files.delete(dir);
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        } else if (f.length() <= 0) {
-            LOGGER.warn("Removing {}...", currentPath);
-            Files.deleteIfExists(currentPath);
-        } else {
-            LOGGER.warn("Patching {}...", currentPath);
-            Files.copy(f.toPath(), currentPath, StandardCopyOption.REPLACE_EXISTING);
+    /**
+     * The fun begins.
+     */
+    @Override
+    public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
+        if (args.get(args.size() - 3).equals("--bansoukou")) {
+            return;
         }
+        String classPath = getClassPaths();
+        String javaPath = System.getProperty("java.home");
+        if (!javaPath.endsWith("bin")) {
+            javaPath = javaPath + File.separatorChar + "bin";
+        }
+        javaPath = javaPath + File.separatorChar + (System.console() == null ? "javaw.exe" : "java.exe");
+        String existingCommands = System.getProperty("sun.java.command");
+        List<String> commands = new ArrayList<>();
+        commands.add(javaPath); // Start of the command - invokes the java install that is running the current instance
+        commands.add("-cp");
+        commands.add('"' + classPath + '"'); // Add in existing classpaths (TODO: configurable)
+        commands.addAll(ManagementFactory.getRuntimeMXBean().getInputArguments()); // Any java args (TODO: configurable)
+        commands.add("zone.rong.bansoukou.BansoukouStart"); // Main class (TODO: configurable)
+        commands.addAll(args); // Some leftover arguments that isn't parsed
+        commands.add("--version"); // Versioning
+        commands.add(profile);
+        commands.add("--assetsDir"); // Assets directory
+        commands.add(assetsDir.toString());
+
+        commands.add("--tweakClass");
+        commands.add("net.minecraftforge.fml.common.launcher.FMLTweaker"); // Main (first) Tweaker (TODO: configurable)
+
+        /*
+        for (String keys : ((List<String>) Launch.blackboard.getOrDefault("TweakClasses", Collections.emptyList()))) {
+            if (keys.equals("net.minecraftforge.fml.common.launcher.FMLInjectionAndSortingTweaker")) {
+                continue;
+            }
+            commands.add("--tweakClass"); // Add any tweak classes, preferably in order
+            commands.add(keys);
+        }
+         */
+
+        commands.add(existingCommands); // Any program arguments, mostly for dev env
+
+        commands.add("--bansoukou"); // Add unique arg to tell Bansoukou its a Bansoukou-spawned process
+
+        commands.add("--parentpid");
+        commands.add(ManagementFactory.getRuntimeMXBean().getName().split("@")[0]); // Cries in Java 9
+
+        File userDir = new File(System.getProperty("user.dir"));
+        ProcessBuilder builder = new ProcessBuilder()
+                .directory(userDir)
+                .command(commands)
+                .inheritIO();
+        try {
+            org.apache.logging.log4j.core.Logger loggerImpl = (org.apache.logging.log4j.core.Logger) LOGGER;
+            RollingRandomAccessFileAppender appender = (RollingRandomAccessFileAppender) loggerImpl.getAppenders().get("File");
+            RollingRandomAccessFileManager manager = appender.getManager();
+            manager.closeOutputStream();
+            appender = (RollingRandomAccessFileAppender) loggerImpl.getAppenders().get("DebugFile");
+            manager = appender.getManager();
+            manager.closeOutputStream();
+            LogManager.shutdown();
+            Files.delete(Paths.get(Launch.minecraftHome.toString(), "logs", "latest.log"));
+            Files.delete(Paths.get(Launch.minecraftHome.toString(), "logs", "debug.log"));
+            LOGGER.info("Reloading loggers...");
+            Process process = builder.start();
+            process.waitFor(); // TODO: try to free memory as much as possible in the current process
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        ExitOnSpawningNewProcess.exit(0);
     }
 
     @Override
-    public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) { }
+    public void injectIntoClassLoader(LaunchClassLoader classLoader) {
 
-    @Override
-    public void injectIntoClassLoader(LaunchClassLoader classLoader) { }
+    }
 
     @Override
     public String getLaunchTarget() {
@@ -248,4 +167,9 @@ public class BansoukouTweaker implements ITweaker {
         return new String[0];
     }
 
+    private String getClassPaths() {
+        String CP = ManagementFactory.getRuntimeMXBean().getClassPath();
+        CP += ";" + Launch.minecraftHome + File.separator + "mods" + File.separator + "." + File.separator + "bansoukou-3.0.jar"; // TODO
+        return CP;
+    }
 }

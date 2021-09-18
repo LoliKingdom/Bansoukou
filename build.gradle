@@ -35,7 +35,7 @@ jar {
     manifest.attributes(
             "FMLCorePlugin": "zone.rong.bansoukou.BansoukouCoreMod",
             "TweakClass": "zone.rong.bansoukou.BansoukouTweaker",
-            "TweakOrder": -2147483647,
+            "TweakOrder": -100000,
             "Specification-Title": "Bansoukou",
             "Specification-Vendor": "Rongmario",
             "Specification-Version": 1,
