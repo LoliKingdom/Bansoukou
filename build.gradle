@@ -14,9 +14,9 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
-version = '3.0'
+version = '4.0'
 group = 'zone.rong' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = 'bansoukou'
+archivesBaseName = '_bansoukou' // Load first
 
 sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
 
@@ -24,18 +24,11 @@ minecraft {
     version = "1.12.2-14.23.5.2847"
     runDir = "run"
     mappings = "stable_39"
-    def args = [
-            '-Dfml.coreMods.load=zone.rong.bansoukou.BansoukouCoreMod'
-    ]
-    clientJvmArgs.addAll(args)
-    serverJvmArgs.addAll(args)
 }
 
 jar {
     manifest.attributes(
             "FMLCorePlugin": "zone.rong.bansoukou.BansoukouCoreMod",
-            "TweakClass": "zone.rong.bansoukou.BansoukouTweaker",
-            "TweakOrder": -2147483647,
             "Specification-Title": "Bansoukou",
             "Specification-Vendor": "Rongmario",
             "Specification-Version": 1,
