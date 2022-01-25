@@ -1,5 +1,6 @@
 package zone.rong.bansoukou;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.fml.relauncher.CoreModManager;
 import sun.misc.URLClassPath;
@@ -28,6 +29,8 @@ public class JarReplacer {
 
 	/* Map of each URL opened to its corresponding Loader */
 	// HashMap<String, URLClassPath.Loader> lmap = new HashMap<String, URLClassPath.Loader>();
+
+	final Set<String> ignoredMods = new ObjectOpenHashSet<>();
 
 	private final URLClassPath ucp;
 
@@ -103,6 +106,7 @@ public class JarReplacer {
 					}
 					String oldFileName = Paths.get(oldUrl.toURI()).getFileName().toString();
 					String newFileName = Paths.get(newUrl.toURI()).getFileName().toString();
+					ignoredMods.add(newFileName);
 					index = CoreModManager.getIgnoredMods().indexOf(oldFileName);
 					if (index != -1) {
 						CoreModManager.getIgnoredMods().set(index, newFileName);
