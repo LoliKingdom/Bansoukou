@@ -54,12 +54,14 @@ public class JarReplacer {
 			init$ucp$lmap.setAccessible(true);
 			init$ucp$jarHandler = URLClassPath.class.getDeclaredField("jarHandler");
 			init$ucp$jarHandler.setAccessible(true);
-			init$ucp$acc = URLClassPath.class.getDeclaredField("acc");
-			init$ucp$acc.setAccessible(true);
-
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		try {
+			// This field doesn't exist in 8u51, its in URLClassLoader itself but we won't be needing it
+			init$ucp$acc = URLClassPath.class.getDeclaredField("acc");
+			init$ucp$acc.setAccessible(true);
+		} catch (Exception ignored) { }
 		ucp = init$ucp;
 		ucp$path = init$ucp$path;
 		ucp$urls = init$ucp$urls;
@@ -110,19 +112,29 @@ public class JarReplacer {
 						CoreModManager.getReparseableCoremods().set(index, newFileName);
 					}
 					((JarFile) jarLoader$jar.get(loader)).close(); // Close old loader
-					if (jarLoader$ctor == null) {
-						jarLoader$ctor = loader.getClass().getDeclaredConstructor(URL.class, URLStreamHandler.class, HashMap.class, AccessControlContext.class);
-						jarLoader$ctor.setAccessible(true);
-					}
 					HashMap lmap = (HashMap) ucp$lmap.get(ucp);
-					Object newJarLoader = jarLoader$ctor.newInstance(newUrl, ucp$jarHandler.get(ucp), lmap, ucp$acc.get(ucp)); // Create new loader
+					Object newJarLoader = null;
+					if (jarLoader$ctor == null) {
+						try {
+							jarLoader$ctor = loader.getClass().getDeclaredConstructor(URL.class, URLStreamHandler.class, HashMap.class, AccessControlContext.class);
+							jarLoader$ctor.setAccessible(true);
+							newJarLoader = jarLoader$ctor.newInstance(newUrl, ucp$jarHandler.get(ucp), lmap, ucp$acc.get(ucp)); // Create new loader
+						} catch (Exception e) {
+							jarLoader$ctor = loader.getClass().getDeclaredConstructor(URL.class, URLStreamHandler.class, HashMap.class); // Older versions doesn't need ACC
+							jarLoader$ctor.setAccessible(true);
+							newJarLoader = jarLoader$ctor.newInstance(newUrl, ucp$jarHandler.get(ucp), lmap); // Create new loader
+						}
+					}
+					if (newJarLoader == null) {
+						throw new IllegalStateException("Cannot instantiate replacement JarLoader.");
+					}
 					String key = (String) ((Stream<Map.Entry>) lmap.entrySet().stream()).filter(e -> e.getValue() == loader).findFirst().map(Map.Entry::getKey).get();
 					lmap.replace(key, newUrl);
 					loadersIter.set(newJarLoader);
 					Files.delete(originalPath);
 				}
 			}
-		} catch (ReflectiveOperationException | IOException | URISyntaxException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
