@@ -168,18 +168,8 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 	@Override
 	public void injectData(Map<String, Object> data) {
 		LOGGER.warn("Deleting queued files.");
-		queuedDeletion.forEach((url, path) -> {
-			if (JarRemover.instance.removeJar(url)) {
-				try {
-					Files.delete(path);
-					Launch.classLoader.getSources().removeIf(source -> url.equals(source));
-					Launch.classLoader.addURL(queuedAddition.get(url));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		JarRemover.instance = null;
+		queuedDeletion.forEach((oldUrl, path) -> JarReplacer.instance.replaceJar(oldUrl, path, queuedAddition.get(oldUrl)));
+		JarReplacer.instance = null;
 		queuedDeletion = null;
 		queuedAddition = null;
 	}
@@ -197,7 +187,7 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 			meta.modId = "bansoukou";
 			meta.name = "Bansoukou";
 			meta.description = "A simple coremod that streamlines patching of mods.";
-			meta.version = "4.0";
+			meta.version = "4.1";
 			meta.logoFile = "/icon.png";
 			meta.authorList.add("Rongmario");
 		}
