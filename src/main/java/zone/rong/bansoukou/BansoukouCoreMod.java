@@ -7,22 +7,17 @@ import net.minecraftforge.common.ForgeVersion;
 import net.minecraftforge.fml.common.DummyModContainer;
 import net.minecraftforge.fml.common.LoadController;
 import net.minecraftforge.fml.common.ModMetadata;
-import net.minecraftforge.fml.relauncher.CoreModManager;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
+import net.minecraftforge.fml.relauncher.libraries.LibraryManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.lang.reflect.Field;
+import java.io.*;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.stream.Stream;
 import java.util.zip.ZipException;
@@ -33,8 +28,6 @@ import java.util.zip.ZipException;
 public class BansoukouCoreMod implements IFMLLoadingPlugin {
 
 	public static final Logger LOGGER = LogManager.getLogger("Bansoukou");
-
-	static boolean needToReplaceIgnoredMods = false;
 
 	Map<URL, Path> queuedDeletion = new Object2ObjectOpenHashMap<>();
 	Map<URL, URL> queuedAddition = new Object2ObjectOpenHashMap<>();
@@ -174,20 +167,14 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 	public void injectData(Map<String, Object> data) {
 		if (!queuedDeletion.isEmpty()) {
 			try {
-				Field ignoredModFilesField = CoreModManager.class.getDeclaredField("ignoredModFiles");
-				ignoredModFilesField.setAccessible(true);
-				ignoredModFilesField.set(null, new ArrayList() {
-					@Override
-					public boolean contains(Object o) {
-						return super.contains(o) || JarReplacer.instance.ignoredMods.contains(o);
-					}
-				});
+				FilenameFilter newFilter = (dir, name) -> JarReplacer.instance.ignoredMods.contains(name) || name.endsWith(".jar") || name.endsWith(".zip");
+				LibraryManager.class.getDeclaredField("MOD_FILENAME_FILTER").set(null, newFilter);
 			} catch (NoSuchFieldException | IllegalAccessException e) {
 				e.printStackTrace();
 			}
-			needToReplaceIgnoredMods = true;
 			queuedDeletion.forEach((oldUrl, path) -> JarReplacer.instance.replaceJar(oldUrl, path, queuedAddition.get(oldUrl)));
 		}
+		JarReplacer.instance = null;
 		queuedDeletion = null;
 		queuedAddition = null;
 	}
@@ -205,23 +192,13 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 			meta.modId = "bansoukou";
 			meta.name = "Bansoukou";
 			meta.description = "A simple coremod that streamlines patching of mods.";
-			meta.version = "4.2";
+			meta.version = "4.2.1";
 			meta.logoFile = "/icon.png";
 			meta.authorList.add("Rongmario");
 		}
 
 		@Override
 		public boolean registerBus(EventBus bus, LoadController controller) {
-			if (needToReplaceIgnoredMods) {
-				try {
-					Field ignoredModFilesField = CoreModManager.class.getDeclaredField("ignoredModFiles");
-					ignoredModFilesField.setAccessible(true);
-					ignoredModFilesField.set(null, new ArrayList<>(CoreModManager.getIgnoredMods()));
-				} catch (NoSuchFieldException | IllegalAccessException e) {
-					e.printStackTrace();
-				}
-			}
-			JarReplacer.instance = null;
 			bus.register(this);
 			return true;
 		}
