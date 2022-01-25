@@ -134,8 +134,8 @@ public class JarReplacer {
 					Files.delete(originalPath);
 				}
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (Throwable t) {
+			t.printStackTrace();
 		}
 	}
 
