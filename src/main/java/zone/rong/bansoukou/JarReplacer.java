@@ -106,7 +106,7 @@ public class JarReplacer {
 					}
 					String oldFileName = Paths.get(oldUrl.toURI()).getFileName().toString();
 					String newFileName = Paths.get(newUrl.toURI()).getFileName().toString();
-					ignoredMods.add(newFileName);
+					ignoredMods.add(oldFileName);
 					index = CoreModManager.getIgnoredMods().indexOf(oldFileName);
 					if (index != -1) {
 						CoreModManager.getIgnoredMods().set(index, newFileName);

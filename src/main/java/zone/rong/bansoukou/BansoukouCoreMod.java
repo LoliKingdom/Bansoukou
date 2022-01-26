@@ -194,7 +194,7 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 			meta.modId = "bansoukou";
 			meta.name = "Bansoukou";
 			meta.description = "A simple coremod that streamlines patching of mods.";
-			meta.version = "4.2.2";
+			meta.version = "4.2.3";
 			meta.logoFile = "/icon.png";
 			meta.authorList.add("Rongmario");
 		}
