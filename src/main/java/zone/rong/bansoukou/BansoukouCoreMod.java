@@ -15,6 +15,7 @@ import org.apache.logging.log4j.Logger;
 import javax.annotation.Nullable;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.*;
@@ -171,6 +172,9 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 				FilenameFilter newFilter = (dir, name) -> JarReplacer.instance.ignoredMods.contains(name) || name.endsWith(".jar") || name.endsWith(".zip");
 				Field modFilenameFilterField = LibraryManager.class.getDeclaredField("MOD_FILENAME_FILTER");
 				modFilenameFilterField.setAccessible(true);
+				Field modifiersField = Field.class.getDeclaredField("modifiers");
+				modifiersField.setAccessible(true);
+				modifiersField.setInt(modFilenameFilterField, modFilenameFilterField.getModifiers() & ~Modifier.FINAL);
 				modFilenameFilterField.set(null, newFilter);
 			} catch (NoSuchFieldException | IllegalAccessException e) {
 				e.printStackTrace();
