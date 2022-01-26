@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.io.*;
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.*;
@@ -168,13 +169,14 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 		if (!queuedDeletion.isEmpty()) {
 			try {
 				FilenameFilter newFilter = (dir, name) -> JarReplacer.instance.ignoredMods.contains(name) || name.endsWith(".jar") || name.endsWith(".zip");
-				LibraryManager.class.getDeclaredField("MOD_FILENAME_FILTER").set(null, newFilter);
+				Field modFilenameFilterField = LibraryManager.class.getDeclaredField("MOD_FILENAME_FILTER");
+				modFilenameFilterField.setAccessible(true);
+				modFilenameFilterField.set(null, newFilter);
 			} catch (NoSuchFieldException | IllegalAccessException e) {
 				e.printStackTrace();
 			}
 			queuedDeletion.forEach((oldUrl, path) -> JarReplacer.instance.replaceJar(oldUrl, path, queuedAddition.get(oldUrl)));
 		}
-		JarReplacer.instance = null;
 		queuedDeletion = null;
 		queuedAddition = null;
 	}
@@ -192,7 +194,7 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 			meta.modId = "bansoukou";
 			meta.name = "Bansoukou";
 			meta.description = "A simple coremod that streamlines patching of mods.";
-			meta.version = "4.2.1";
+			meta.version = "4.2.2";
 			meta.logoFile = "/icon.png";
 			meta.authorList.add("Rongmario");
 		}
