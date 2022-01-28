@@ -39,15 +39,12 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
     static Map<String, String> patchedStrings = new Object2ObjectOpenHashMap<>();
     static Map<URL, URL> patchedUrls = new Object2ObjectOpenHashMap<>();
 
-    public BansoukouCoreMod() throws IOException {
+    File modsFolder;
+
+    public BansoukouCoreMod() {
         LOGGER.info("Ikimasu!");
-        File bansoukouRoot;
-        if (Launch.minecraftHome == null) {
-            bansoukouRoot = new File(".", "bansoukou");
-        } else {
-            bansoukouRoot = new File(Launch.minecraftHome, "bansoukou").getCanonicalFile();
-        }
-        LOGGER.info(bansoukouRoot.toURI());
+        File rootFolder = Launch.minecraftHome == null ? new File(".") : Launch.minecraftHome;
+        File bansoukouRoot = new File(rootFolder, "bansoukou");
         if (bansoukouRoot.mkdir()) {
             LOGGER.info("No bansoukou found. Perhaps it is the first load. Continuing with mod loading.");
             return;
@@ -57,16 +54,11 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
             LOGGER.info("No patches found. Continuing with mod loading.");
             return;
         }
-        File mods;
-        if (Launch.minecraftHome == null) {
-            mods = new File(".", "mods");
-        } else {
-            mods = new File(Launch.minecraftHome, "mods").getCanonicalFile();
-        }
+        modsFolder = new File(rootFolder, "mods");
         final Map<File, File> jars = new Object2ObjectOpenHashMap<>(patchRoot.length);
         for (File file : patchRoot) {
             try {
-                File patch = getPatchFile(mods, file);
+                File patch = getPatchFile(modsFolder, file);
                 if (patch != null) {
                     jars.put(file, patch);
                 }
@@ -182,9 +174,6 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 
     private File getPatchFile(File mods, File patchFile) throws IOException {
         File modFile = new File(mods, patchFile.getName().concat(".jar"));
-        if (Launch.minecraftHome != null) {
-            modFile = modFile.getCanonicalFile();
-        }
         if (Files.exists(modFile.toPath())) {
             try (RandomAccessFile raf = new RandomAccessFile(modFile, "r")) {
                 int start = raf.readInt();
@@ -200,7 +189,9 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
             Path newFilePath = newFile.toPath();
             Files.copy(modFilePath, newFilePath, StandardCopyOption.REPLACE_EXISTING);
             patchedStrings.put(modFilePath.getFileName().toString(), newFilePath.getFileName().toString());
-            patchedUrls.put(modFile.toURI().toURL(), newFile.toURI().toURL());
+            URL relativeUrl = modFile.toURI().toURL();
+            patchedUrls.put(relativeUrl, newFile.toURI().toURL());
+            LOGGER.warn("Marking {} to fool Forge's mod discovering mechanism.", relativeUrl);
             return newFile;
         } else {
             if (!new File(mods, patchFile.getName().concat(".disabled")).exists()) {
@@ -288,31 +279,21 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 
     @Override
     public void injectData(Map<String, Object> data) {
-        try {
-            File mods;
-            if (Launch.minecraftHome == null) {
-                mods = new File(".", "mods");
-            } else {
-                mods = new File(Launch.minecraftHome, "mods").getCanonicalFile();
+        scheduledDeletion.forEach((s, p) -> {
+            try {
+                File disabledFile = new File(modsFolder, s + ".disabled");
+                Files.move(p, disabledFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    try {
+                        File disabledFile = new File(modsFolder, s + ".disabled");
+                        Files.move(p, disabledFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }));
             }
-            scheduledDeletion.forEach((s, p) -> {
-                try {
-                    File disabledFile = new File(mods, s + ".disabled");
-                    Files.move(p, disabledFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                } catch (IOException e) {
-                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                        try {
-                            File disabledFile = new File(mods, s + ".disabled");
-                            Files.move(p, disabledFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        } catch (IOException ex) {
-                            ex.printStackTrace();
-                        }
-                    }));
-                }
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        });
     }
 
     @Override
@@ -328,7 +309,7 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
             meta.modId = "bansoukou";
             meta.name = "Bansoukou";
             meta.description = "A simple coremod that streamlines patching of mods.";
-            meta.version = "4.3";
+            meta.version = "4.3.1";
             meta.logoFile = "/icon.png";
             meta.authorList.add("Rongmario");
         }
