@@ -1,5 +1,6 @@
 package zone.rong.bansoukou.relauncher.processchecker;
 
+import net.minecraftforge.fml.exit.QualifiedExit;
 import org.apache.commons.lang3.SystemUtils;
 
 import java.io.IOException;
@@ -41,7 +42,7 @@ public class ProcessCheckerThread extends Thread {
             }
         }
         System.out.println("Exiting...");
-        // QualifiedExit.exit(0);
+        QualifiedExit.exit(0);
     }
 
 }
