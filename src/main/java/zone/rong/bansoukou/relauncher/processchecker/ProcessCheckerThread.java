@@ -15,6 +15,7 @@ public class ProcessCheckerThread extends Thread {
     public ProcessCheckerThread(String parentPid) {
         super();
         setName("Bansoukou/ProcessMaintainerThread");
+        setDaemon(true);
         this.parentPid = parentPid;
         if (SystemUtils.IS_JAVA_1_8) {
             this.maintainer = SystemUtils.IS_OS_WINDOWS ? new J8WindowsProcessChecker() : new J8POSIXProcessChecker();
