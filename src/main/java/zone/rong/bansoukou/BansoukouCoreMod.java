@@ -14,6 +14,7 @@ import net.minecraftforge.fml.relauncher.libraries.LibraryManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import sun.misc.URLClassPath;
+import zone.rong.bansoukou.relauncher.BansoukouRelauncher;
 
 import javax.annotation.Nullable;
 import java.io.*;
@@ -43,6 +44,7 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 
     public BansoukouCoreMod() {
         LOGGER.info("Ikimasu!");
+        BansoukouRelauncher.run(); // TODO: Pending a relocation
         File rootFolder = Launch.minecraftHome == null ? new File(".") : Launch.minecraftHome;
         File bansoukouRoot = new File(rootFolder, "bansoukou");
         if (bansoukouRoot.mkdir()) {
