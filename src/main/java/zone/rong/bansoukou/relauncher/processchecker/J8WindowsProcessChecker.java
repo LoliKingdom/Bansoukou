@@ -4,7 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-public class J9WindowsProcessChecker implements ProcessChecker {
+public class J8WindowsProcessChecker implements ProcessChecker {
 
     private ProcessBuilder builder;
 
