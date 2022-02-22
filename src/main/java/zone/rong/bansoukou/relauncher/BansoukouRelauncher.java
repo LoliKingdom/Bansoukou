@@ -14,12 +14,13 @@ public class BansoukouRelauncher {
     public static void run() {
         try {
             relieve();
+            spawn();
         } catch (ReflectiveOperationException e) {
             e.printStackTrace();
         }
     }
 
-    public static void relieve() throws ReflectiveOperationException {
+    private static void relieve() throws ReflectiveOperationException {
         System.out.println("Prior to relieving: " + FileUtils.byteCountToDisplaySize(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
         Field field;
         Field[] fields;
@@ -46,6 +47,10 @@ public class BansoukouRelauncher {
         // Force GC
         System.gc();
         System.out.println("After relieving: " + FileUtils.byteCountToDisplaySize(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
+    }
+
+    private static void spawn() {
+
     }
 
 }
