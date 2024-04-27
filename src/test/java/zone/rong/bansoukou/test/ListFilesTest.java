@@ -6,6 +6,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -26,7 +27,12 @@ public class ListFilesTest {
             }
             Path resolved = directory.resolve(i + "bansoukou.jar");
             files.add(resolved);
-            Files.createFile(resolved);
+            try {
+                Files.createFile(resolved);
+            } catch (FileAlreadyExistsException e) {
+                System.out.println(i + "bansoukou.jar resulted in FileAlreadyExistsException.");
+                e.printStackTrace();
+            }
         }
         Assertions.assertFalse(files.isEmpty());
         File directoryAsFile = directory.toFile();
