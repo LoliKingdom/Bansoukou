@@ -3,3 +3,7 @@
 
 // If you wish to use the default helper methods, uncomment the line below
 // apply from: 'gradle/scripts/helpers.gradle'
+
+jar {
+    archiveBaseName = "!${propertyString('mod_id')}"
+}
