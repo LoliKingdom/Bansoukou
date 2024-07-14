@@ -1,7 +1,6 @@
 package zone.rong.bansoukou;
 
 import net.minecraftforge.fml.relauncher.CoreModManager;
-import net.minecraftforge.fml.relauncher.FMLSecurityManager;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -11,6 +10,7 @@ import java.security.Permission;
 public class BansoukouSecurityManager extends SecurityManager {
 
     private static final IOException CHEAT_EXCEPTION = new CheatIOException("Bansoukou: Premature Exit Please Ignore");
+    private static final SecurityManager DEFAULT_SECURITY_MANAGER = System.getSecurityManager();
 
     private static Field system$security;
 
@@ -36,16 +36,14 @@ public class BansoukouSecurityManager extends SecurityManager {
     }
 
     @Override
-    public void checkPermission(Permission perm) {
-
-    }
+    public void checkPermission(Permission perm) { }
 
     @Override
     public void checkRead(String file) {
         Class[] context = this.getClassContext();
         if (context[2] == CoreModManager.class && context[3] == CoreModManager.class && new Exception().getStackTrace()[2].getMethodName().equals("discoverCoreMods")) {
             Bansoukou.UNSAFE.throwException(CHEAT_EXCEPTION);
-            System.setSecurityManager(new FMLSecurityManager());
+            System.setSecurityManager(DEFAULT_SECURITY_MANAGER);
         }
     }
 

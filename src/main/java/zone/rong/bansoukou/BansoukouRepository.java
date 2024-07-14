@@ -5,10 +5,21 @@ import net.minecraftforge.fml.relauncher.libraries.Repository;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.List;
 
 class BansoukouRepository extends Repository { // LinkRepository
+
+    private static final File BANSOUKOU_FILE;
+
+    static {
+        try {
+            BANSOUKOU_FILE = new File(BansoukouRepository.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("Unable to obtain Bansoukou's source", e);
+        }
+    }
 
     private final Repository memory;
 
@@ -34,6 +45,9 @@ class BansoukouRepository extends Repository { // LinkRepository
 
     @Override
     public void filterLegacy(List<File> list) {
+        if (BANSOUKOU_FILE.isFile()) {
+            list.remove(BANSOUKOU_FILE);
+        }
         list.replaceAll(file -> {
             Path patched = Bansoukou.MOD_TO_PATCH.get(file.toPath().toAbsolutePath());
             if (patched == null) {

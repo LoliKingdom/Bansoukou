@@ -7,7 +7,6 @@ import net.minecraftforge.fml.common.DummyModContainer;
 import net.minecraftforge.fml.common.LoadController;
 import net.minecraftforge.fml.common.ModMetadata;
 import net.minecraftforge.fml.relauncher.CoreModManager;
-import net.minecraftforge.fml.relauncher.FMLSecurityManager;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -106,7 +105,7 @@ public class Bansoukou implements IFMLLoadingPlugin {
                         patchJar(originalJar, patchFile, cachedJar);
                         LOGGER.info("Patching and caching {}", jarName);
                     } else {
-                        LOGGER.info("{} is up to date.", jarName);
+                        LOGGER.info("{} is up to date, patching not needed.", jarName);
                     }
                     MOD_TO_PATCH.put(originalJar.toAbsolutePath(), cachedJar);
                 } else {
@@ -121,10 +120,7 @@ public class Bansoukou implements IFMLLoadingPlugin {
             BansoukouModList.replace();
             BansoukouSecurityManager.replace();
             BansoukouFMLTweaker.replace();
-            if (System.getSecurityManager().getClass() == FMLSecurityManager.class) {
-                // Re-install SecurityManager
-                BansoukouSecurityManager.replace();
-            }
+            BansoukouSecurityManager.replace();
         }
 
     }
