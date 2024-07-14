@@ -19,6 +19,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.*;
 import java.util.*;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -64,6 +65,26 @@ public class Bansoukou implements IFMLLoadingPlugin {
     private static void patchJar(Path originalJar, Path patchJar, Path cacheJar) throws IOException {
         Files.copy(originalJar, cacheJar, StandardCopyOption.REPLACE_EXISTING);
 
+        // Remove signature-related files
+        try (FileSystem cacheFileSystem = FileSystems.newFileSystem(cacheJar, null)) {
+            Path metaInf = cacheFileSystem.getPath("/META-INF");
+            if (Files.exists(metaInf) && Files.isDirectory(metaInf)) {
+                try (Stream<Path> walk = Files.list(metaInf)) {
+                    walk.filter(path -> {
+                        String name = path.getFileName().toString().toLowerCase();
+                        return name.endsWith(".sf") || name.endsWith(".rsa") || name.endsWith(".dsa");
+                    }).forEach(path -> {
+                        try {
+                            Files.delete(path);
+                        } catch (IOException e) {
+                            throw new RuntimeException("Failed to delete " + path);
+                        }
+                    });
+                }
+            }
+        }
+
+        // Patch over files
         try (ZipFile patchZipFile = new ZipFile(patchJar.toFile());
              FileSystem jarFs = FileSystems.newFileSystem(cacheJar, null)) {
             Enumeration<? extends ZipEntry> entries = patchZipFile.entries();
