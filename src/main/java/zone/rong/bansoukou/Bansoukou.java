@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Stream;
@@ -31,9 +32,26 @@ public class Bansoukou implements IFMLLoadingPlugin {
 
     static final Unsafe UNSAFE = unsafe();
     static final Logger LOGGER = LogManager.getLogger(Tags.MOD_NAME);
+    static final File BANSOUKOU_FILE = location();
     static final Map<Path, Path> MOD_TO_PATCH = new HashMap<>();
 
     private static final Path MOD_DIRECTORY = Launch.minecraftHome.toPath().resolve("mods");
+
+    static File location() {
+        URL path = BansoukouRepository.class.getProtectionDomain().getCodeSource().getLocation();
+        URI resolvedPath;
+        try {
+            URLConnection connection = path.openConnection();
+            if (connection instanceof JarURLConnection) {
+                resolvedPath = ((JarURLConnection) connection).getJarFileURL().toURI();
+            } else {
+                resolvedPath = path.toURI();
+            }
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException("Unable to obtain Bansoukou's source", e);
+        }
+        return new File(resolvedPath);
+    }
 
     static void rerunModLoading() {
         try {

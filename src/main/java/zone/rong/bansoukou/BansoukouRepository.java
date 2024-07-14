@@ -11,16 +11,6 @@ import java.util.List;
 
 class BansoukouRepository extends Repository { // LinkRepository
 
-    private static final File BANSOUKOU_FILE;
-
-    static {
-        try {
-            BANSOUKOU_FILE = new File(BansoukouRepository.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-        } catch (URISyntaxException e) {
-            throw new RuntimeException("Unable to obtain Bansoukou's source", e);
-        }
-    }
-
     private final Repository memory;
 
     BansoukouRepository(Repository memory, File root) throws IOException {
@@ -45,8 +35,9 @@ class BansoukouRepository extends Repository { // LinkRepository
 
     @Override
     public void filterLegacy(List<File> list) {
-        if (BANSOUKOU_FILE.isFile()) {
-            list.remove(BANSOUKOU_FILE);
+        File bansoukouFile = Bansoukou.BANSOUKOU_FILE;
+        if (bansoukouFile.isFile()) {
+            list.remove(bansoukouFile);
         }
         list.replaceAll(file -> {
             Path patched = Bansoukou.MOD_TO_PATCH.get(file.toPath().toAbsolutePath());
