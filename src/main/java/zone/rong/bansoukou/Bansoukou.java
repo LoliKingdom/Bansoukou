@@ -7,6 +7,7 @@ import net.minecraftforge.fml.common.DummyModContainer;
 import net.minecraftforge.fml.common.LoadController;
 import net.minecraftforge.fml.common.ModMetadata;
 import net.minecraftforge.fml.relauncher.CoreModManager;
+import net.minecraftforge.fml.relauncher.FMLInjectionData;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,15 +28,17 @@ import java.util.zip.ZipFile;
 @IFMLLoadingPlugin.Name(Tags.MOD_NAME)
 public class Bansoukou implements IFMLLoadingPlugin {
 
-    public static final Path BANSOUKOU_DIRECTORY = Launch.minecraftHome.toPath().resolve(Tags.MOD_ID);
-    public static final Path CACHE_BANSOUKOU_DIRECTORY = Launch.minecraftHome.toPath().resolve("cache/" + Tags.MOD_ID);
+    private static final Path HOME = ((File) FMLInjectionData.data()[6]).toPath();
+    
+    public static final Path BANSOUKOU_DIRECTORY = HOME.resolve(Tags.MOD_ID);
+    public static final Path CACHE_BANSOUKOU_DIRECTORY = HOME.resolve("cache/" + Tags.MOD_ID);
 
     static final Unsafe UNSAFE = unsafe();
     static final Logger LOGGER = LogManager.getLogger(Tags.MOD_NAME);
     static final File BANSOUKOU_FILE = location();
     static final Map<Path, Path> MOD_TO_PATCH = new HashMap<>();
 
-    private static final Path MOD_DIRECTORY = Launch.minecraftHome.toPath().resolve("mods");
+    private static final Path MOD_DIRECTORY = HOME.resolve("mods");
 
     static File location() {
         URL path = BansoukouRepository.class.getProtectionDomain().getCodeSource().getLocation();
@@ -57,7 +60,7 @@ public class Bansoukou implements IFMLLoadingPlugin {
         try {
             Method discoverCoreMods = CoreModManager.class.getDeclaredMethod("discoverCoreMods", File.class, LaunchClassLoader.class);
             discoverCoreMods.setAccessible(true);
-            discoverCoreMods.invoke(null, Launch.minecraftHome, Launch.classLoader);
+            discoverCoreMods.invoke(null, HOME, Launch.classLoader);
         } catch (Throwable t) {
             throw new RuntimeException("Unable to load mods with Bansoukou patches...", t);
         }
