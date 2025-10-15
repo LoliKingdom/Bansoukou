@@ -200,7 +200,7 @@ public class Bansoukou implements IFMLLoadingPlugin {
             meta.name = Tags.MOD_NAME;
             meta.description = Tags.MOD_DESCRIPTION;
             meta.version = Tags.VERSION;
-            meta.logoFile = "/icon.png";
+            meta.logoFile = "/assets/bansoukou/icon.png";
             meta.authorList.add("Rongmario");
         }
 
