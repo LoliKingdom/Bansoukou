@@ -15,12 +15,12 @@ import java.util.zip.ZipFile;
 public class Bansoukou {
 
     public static final File HOME = (File) FMLInjectionData.data()[6];
+    public static final Logger LOGGER = LogManager.getLogger(Tags.MOD_NAME);
 
     private static final Path HOME_PATH = HOME.toPath();
     public static final Path BANSOUKOU_DIRECTORY = HOME_PATH.resolve(Tags.MOD_ID);
-    public static final Path CACHE_BANSOUKOU_DIRECTORY = HOME_PATH.resolve("cache/" + Tags.MOD_ID);
+    public static final Path CACHE_BANSOUKOU_DIRECTORY = HOME_PATH.resolve("cache").resolve(Tags.MOD_ID);
 
-    private static final Logger LOGGER = LogManager.getLogger(Tags.MOD_NAME);
     private static final Path MOD_DIRECTORY = HOME_PATH.resolve("mods");
 
     public static Map<Path, Path> init() {
@@ -88,25 +88,26 @@ public class Bansoukou {
         }
 
         Map<Path, Path> patch = new HashMap<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(BANSOUKOU_DIRECTORY, "{*.jar,*.zip}")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(BANSOUKOU_DIRECTORY)) {
             for (Path patchFile : stream) {
-                Path relativePath = BANSOUKOU_DIRECTORY.relativize(patchFile);
-                String patchName = patchFile.getFileName().toString();
-                String jarName = patchName.substring(0, patchName.length() - 4) + ".jar";
-                Path jarNamePath = relativePath.resolveSibling(jarName);
-                Path originalJar = MOD_DIRECTORY.resolve(jarNamePath);
-                Path cachedJar = CACHE_BANSOUKOU_DIRECTORY.resolve(jarNamePath);
-                if (Files.exists(originalJar)) {
-                    if (needsPatching(patchFile, cachedJar)) {
-                        patchJar(originalJar, patchFile, cachedJar);
-                        LOGGER.info("Patching and caching {}", jarName);
-                    } else {
-                        LOGGER.info("{} is up to date, patching not needed.", jarName);
-                    }
-                    patch.put(originalJar.toAbsolutePath(), cachedJar);
-                } else {
-                    LOGGER.info("Patch found for {}, but mod file is not present, skipping.", jarName);
+                if (Files.isDirectory(patchFile)) {
+                    LOGGER.error("{} is a directory! Unlike Bansoukou v4 and before, your patches should be zipped up in a jar file. If the mod you are patching is a zip file, ", patchFile);
+                    continue;
                 }
+                String patchName = patchFile.getFileName().toString();
+                if (!(patchName.endsWith(".jar") || patchName.endsWith("zip"))) {
+                    LOGGER.error("{} is not a .jar or .zip file, skipping.", patchName);
+                    continue;
+                }
+                Path originalJar = MOD_DIRECTORY.resolve(patchName);
+                Path cachedJar = CACHE_BANSOUKOU_DIRECTORY.resolve(patchName);
+                if (needsPatching(patchFile, cachedJar)) {
+                    patchJar(originalJar, patchFile, cachedJar);
+                    LOGGER.info("Patching and caching {}", patchName);
+                } else {
+                    LOGGER.info("{} is up to date, patching not needed.", patchName);
+                }
+                patch.put(originalJar.toAbsolutePath(), cachedJar);
             }
         } catch (IOException e) {
             throw new RuntimeException("Unable to gather bansoukou patches", e);
