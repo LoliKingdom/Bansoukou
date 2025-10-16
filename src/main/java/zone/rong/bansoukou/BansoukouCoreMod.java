@@ -5,6 +5,7 @@ import zone.rong.bansoukou.cleanroom.CleanBansoukou;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Map;
 
 @IFMLLoadingPlugin.Name(Tags.MOD_NAME)
@@ -17,8 +18,9 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
             return;
         }
 
-        if (!Bansoukou.init().isEmpty()) {
-            BansoukouModList.replace();
+        Map<Path, Path> patches = Bansoukou.init();
+        if (!patches.isEmpty()) {
+            BansoukouModList.replace(patches);
             BansoukouSecurityManager.replace();
             BansoukouFMLTweaker.replace();
             BansoukouSecurityManager.replace();

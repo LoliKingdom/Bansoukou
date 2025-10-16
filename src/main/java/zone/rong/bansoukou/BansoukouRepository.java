@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 class BansoukouRepository extends Repository { // LinkRepository
 
@@ -28,10 +29,12 @@ class BansoukouRepository extends Repository { // LinkRepository
     }
 
     private final Repository memory;
+    private final Map<Path, Path> patches;
 
-    BansoukouRepository(Repository memory, File root) throws IOException {
+    BansoukouRepository(Repository memory, File root, Map<Path, Path> patches) throws IOException {
         super(root);
         this.memory = memory;
+        this.patches = patches;
     }
 
     @Override
@@ -56,7 +59,7 @@ class BansoukouRepository extends Repository { // LinkRepository
             list.remove(bansoukouFile);
         }
         list.replaceAll(file -> {
-            Path patched = Bansoukou.MOD_TO_PATCH.get(file.toPath().toAbsolutePath());
+            Path patched = this.patches.get(file.toPath().toAbsolutePath());
             if (patched == null) {
                 return file;
             }

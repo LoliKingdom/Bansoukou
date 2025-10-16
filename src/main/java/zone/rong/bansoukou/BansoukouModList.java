@@ -4,14 +4,15 @@ import net.minecraftforge.fml.relauncher.libraries.ModList;
 import net.minecraftforge.fml.relauncher.libraries.Repository;
 
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.util.Map;
 
 class BansoukouModList extends ModList {
 
-    static void replace() {
+    static void replace(Map<Path, Path> patches) {
         try {
             Repository memory = Repository.get("MEMORY");
-            BansoukouRepository replace = new BansoukouRepository(memory, memory.getFile("dummy").getParentFile());
+            BansoukouRepository replace = new BansoukouRepository(memory, memory.getFile("dummy").getParentFile(), patches);
 
             Field repository$cache = Repository.class.getDeclaredField("cache");
             repository$cache.setAccessible(true);
