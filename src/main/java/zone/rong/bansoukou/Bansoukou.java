@@ -72,7 +72,13 @@ public class Bansoukou {
                     if (targetPath.getParent() != null) {
                         Files.createDirectories(targetPath.getParent());
                     }
-                    Files.copy(patchZipFile.getInputStream(entry), targetPath, StandardCopyOption.REPLACE_EXISTING);
+                    if (entry.getSize() == 0L) {
+                        LOGGER.debug("Deleting {} as it is empty in the patch.", targetPath);
+                        Files.delete(targetPath);
+                    } else {
+                        LOGGER.debug("Patching {}.", targetPath);
+                        Files.copy(patchZipFile.getInputStream(entry), targetPath, StandardCopyOption.REPLACE_EXISTING);
+                    }
                 }
             }
         }
