@@ -1,78 +1,34 @@
 package zone.rong.bansoukou;
 
-import com.google.common.eventbus.EventBus;
-import net.minecraft.launchwrapper.Launch;
-import net.minecraft.launchwrapper.LaunchClassLoader;
-import net.minecraftforge.fml.common.DummyModContainer;
-import net.minecraftforge.fml.common.LoadController;
-import net.minecraftforge.fml.common.ModMetadata;
-import net.minecraftforge.fml.relauncher.CoreModManager;
 import net.minecraftforge.fml.relauncher.FMLInjectionData;
-import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import sun.misc.Unsafe;
 
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-@IFMLLoadingPlugin.Name(Tags.MOD_NAME)
-public class Bansoukou implements IFMLLoadingPlugin {
+public class Bansoukou {
 
-    private static final Path HOME = ((File) FMLInjectionData.data()[6]).toPath();
-    
-    public static final Path BANSOUKOU_DIRECTORY = HOME.resolve(Tags.MOD_ID);
-    public static final Path CACHE_BANSOUKOU_DIRECTORY = HOME.resolve("cache/" + Tags.MOD_ID);
+    public static final File HOME = (File) FMLInjectionData.data()[6];
 
-    static final Unsafe UNSAFE = unsafe();
-    static final Logger LOGGER = LogManager.getLogger(Tags.MOD_NAME);
-    static final File BANSOUKOU_FILE = location();
-    static final Map<Path, Path> MOD_TO_PATCH = new HashMap<>();
+    private static final Path HOME_PATH = HOME.toPath();
+    public static final Path BANSOUKOU_DIRECTORY = HOME_PATH.resolve(Tags.MOD_ID);
+    public static final Path CACHE_BANSOUKOU_DIRECTORY = HOME_PATH.resolve("cache/" + Tags.MOD_ID);
 
-    private static final Path MOD_DIRECTORY = HOME.resolve("mods");
+    private static final Logger LOGGER = LogManager.getLogger(Tags.MOD_NAME);
+    private static final Path MOD_DIRECTORY = HOME_PATH.resolve("mods");
 
-    static File location() {
-        URL path = BansoukouRepository.class.getProtectionDomain().getCodeSource().getLocation();
-        URI resolvedPath;
-        try {
-            URLConnection connection = path.openConnection();
-            if (connection instanceof JarURLConnection) {
-                resolvedPath = ((JarURLConnection) connection).getJarFileURL().toURI();
-            } else {
-                resolvedPath = path.toURI();
-            }
-        } catch (IOException | URISyntaxException e) {
-            throw new RuntimeException("Unable to obtain Bansoukou's source", e);
-        }
-        return new File(resolvedPath);
-    }
-
-    static void rerunModLoading() {
-        try {
-            Method discoverCoreMods = CoreModManager.class.getDeclaredMethod("discoverCoreMods", File.class, LaunchClassLoader.class);
-            discoverCoreMods.setAccessible(true);
-            discoverCoreMods.invoke(null, HOME, Launch.classLoader);
-        } catch (Throwable t) {
-            throw new RuntimeException("Unable to load mods with Bansoukou patches...", t);
-        }
-    }
-
-    private static Unsafe unsafe() {
-        try {
-            Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            return (Unsafe) unsafeField.get(null);
-        } catch (Exception e) {
-            throw new RuntimeException("Exception occurred while getting Unsafe instance", e);
+    public static Map<Path, Path> init() {
+        if (!Files.exists(BANSOUKOU_DIRECTORY) || !Files.isDirectory(BANSOUKOU_DIRECTORY)) {
+            LOGGER.warn("Bansoukou folder not found, skipping.");
+            return Collections.emptyMap();
+        } else {
+            return new Bansoukou().run();
         }
     }
 
@@ -122,18 +78,16 @@ public class Bansoukou implements IFMLLoadingPlugin {
         }
     }
 
-    public Bansoukou() {
-        if (!Files.exists(BANSOUKOU_DIRECTORY) || !Files.isDirectory(BANSOUKOU_DIRECTORY)) {
-            LOGGER.warn("Bansoukou folder not found, skipping.");
-            return;
-        }
+    private Bansoukou() { }
 
+    public Map<Path, Path> run() {
         try {
             Files.createDirectories(CACHE_BANSOUKOU_DIRECTORY);
         } catch (IOException e) {
             throw new RuntimeException("Unable to create Bansoukou's cache directory!", e);
         }
 
+        Map<Path, Path> patch = new HashMap<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(BANSOUKOU_DIRECTORY, "{*.jar,*.zip}")) {
             for (Path patchFile : stream) {
                 Path relativePath = BANSOUKOU_DIRECTORY.relativize(patchFile);
@@ -149,7 +103,7 @@ public class Bansoukou implements IFMLLoadingPlugin {
                     } else {
                         LOGGER.info("{} is up to date, patching not needed.", jarName);
                     }
-                    MOD_TO_PATCH.put(originalJar.toAbsolutePath(), cachedJar);
+                    patch.put(originalJar.toAbsolutePath(), cachedJar);
                 } else {
                     LOGGER.info("Patch found for {}, but mod file is not present, skipping.", jarName);
                 }
@@ -158,58 +112,7 @@ public class Bansoukou implements IFMLLoadingPlugin {
             throw new RuntimeException("Unable to gather bansoukou patches", e);
         }
 
-        if (!MOD_TO_PATCH.isEmpty()) {
-            BansoukouModList.replace();
-            BansoukouSecurityManager.replace();
-            BansoukouFMLTweaker.replace();
-            BansoukouSecurityManager.replace();
-        }
-
-    }
-
-    @Override
-    public String[] getASMTransformerClass() {
-        return null;
-    }
-
-    @Override
-    public String getModContainerClass() {
-        return "zone.rong.bansoukou.Bansoukou$Container";
-    }
-
-    @Nullable
-    @Override
-    public String getSetupClass() {
-        return null;
-    }
-
-    @Override
-    public void injectData(Map<String, Object> data) { }
-
-    @Override
-    public String getAccessTransformerClass() {
-        return null;
-    }
-
-    public static class Container extends DummyModContainer {
-
-        public Container() {
-            super(new ModMetadata());
-            ModMetadata meta = this.getMetadata();
-            meta.modId = Tags.MOD_ID;
-            meta.name = Tags.MOD_NAME;
-            meta.description = Tags.MOD_DESCRIPTION;
-            meta.version = Tags.VERSION;
-            meta.logoFile = "/assets/bansoukou/icon.png";
-            meta.authorList.add("Rongmario");
-        }
-
-        @Override
-        public boolean registerBus(EventBus bus, LoadController controller) {
-            bus.register(this);
-            return true;
-        }
-
+        return patch;
     }
 
 }

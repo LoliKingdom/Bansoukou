@@ -1,11 +1,13 @@
 package zone.rong.bansoukou;
 
+import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 import net.minecraftforge.fml.common.launcher.FMLTweaker;
 import net.minecraftforge.fml.relauncher.CoreModManager;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 
 public class BansoukouFMLTweaker extends FMLTweaker {
@@ -18,6 +20,16 @@ public class BansoukouFMLTweaker extends FMLTweaker {
             coreModManager$tweaker.set(null, new BansoukouFMLTweaker((FMLTweaker) coreModManager$tweaker.get(null)));
         } catch (Throwable t) {
             throw new RuntimeException("Cannot replace FMLTweaker instance", t);
+        }
+    }
+
+    private static void rerunModLoading() {
+        try {
+            Method discoverCoreMods = CoreModManager.class.getDeclaredMethod("discoverCoreMods", File.class, LaunchClassLoader.class);
+            discoverCoreMods.setAccessible(true);
+            discoverCoreMods.invoke(null, Bansoukou.HOME, Launch.classLoader);
+        } catch (Throwable t) {
+            throw new RuntimeException("Unable to load mods with Bansoukou patches...", t);
         }
     }
 
@@ -60,7 +72,7 @@ public class BansoukouFMLTweaker extends FMLTweaker {
         if (!this.ran && "net.minecraftforge.fml.common.launcher.FMLDeobfTweaker".equals(tweakClassName)) {
             this.ran = true;
             // Re-run discoverCoreMods
-            Bansoukou.rerunModLoading();
+            rerunModLoading();
         }
         this.tweaker.injectCascadingTweak(tweakClassName);
     }

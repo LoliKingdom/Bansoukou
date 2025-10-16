@@ -1,6 +1,7 @@
 package zone.rong.bansoukou;
 
 import net.minecraftforge.fml.relauncher.CoreModManager;
+import sun.misc.Unsafe;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -11,6 +12,7 @@ public class BansoukouSecurityManager extends SecurityManager {
 
     private static final IOException CHEAT_EXCEPTION = new CheatIOException("Bansoukou: Premature Exit Please Ignore");
     private static final SecurityManager DEFAULT_SECURITY_MANAGER = System.getSecurityManager();
+    private static final Unsafe UNSAFE = unsafe();
 
     private static Field system$security;
 
@@ -35,6 +37,16 @@ public class BansoukouSecurityManager extends SecurityManager {
         }
     }
 
+    private static Unsafe unsafe() {
+        try {
+            Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            return (Unsafe) unsafeField.get(null);
+        } catch (Exception e) {
+            throw new RuntimeException("Exception occurred while getting Unsafe instance", e);
+        }
+    }
+
     @Override
     public void checkPermission(Permission perm) { }
 
@@ -42,7 +54,7 @@ public class BansoukouSecurityManager extends SecurityManager {
     public void checkRead(String file) {
         Class[] context = this.getClassContext();
         if (context[2] == CoreModManager.class && context[3] == CoreModManager.class && new Exception().getStackTrace()[2].getMethodName().equals("discoverCoreMods")) {
-            Bansoukou.UNSAFE.throwException(CHEAT_EXCEPTION);
+            UNSAFE.throwException(CHEAT_EXCEPTION);
             System.setSecurityManager(DEFAULT_SECURITY_MANAGER);
         }
     }
