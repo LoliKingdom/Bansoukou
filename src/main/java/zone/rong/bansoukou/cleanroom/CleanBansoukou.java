@@ -20,11 +20,16 @@ public class CleanBansoukou {
             bansoukou = Bansoukou.init();
         }
         if (!bansoukou.isEmpty()) {
+            int count = bansoukou.size();
+            int replaced = 0;
             ListIterator<Path> iterator = list.listIterator();
             while (iterator.hasNext()) {
                 Path replacement = bansoukou.get(iterator.next().toAbsolutePath());
                 if (replacement != null) {
                     iterator.set(replacement);
+                    if (++replaced == count) {
+                        return;
+                    }
                 }
             }
         }
