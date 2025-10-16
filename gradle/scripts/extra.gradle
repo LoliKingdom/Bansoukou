@@ -6,4 +6,8 @@
 
 jar {
     archiveBaseName = "!${propertyString('mod_id')}"
+
+    manifest {
+        attributes('Bansoukou': 'zone.rong.bansoukou.cleanroom.CleanBansoukou')
+    }
 }
