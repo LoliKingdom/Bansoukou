@@ -39,12 +39,17 @@ class BansoukouRepository extends Repository { // LinkRepository
 
     @Override
     public Artifact resolve(Artifact artifact) {
-        return this.memory.resolve(artifact);
+        Artifact resolved = this.memory.resolve(artifact);
+        if (resolved == null) {
+            return null;
+        }
+        return new Artifact(resolved, this, resolved.isSnapshot() ? resolved.getTimestamp() : null);
     }
 
     @Override
     public File getFile(String path) {
-        return this.memory.getFile(path);
+        File file = this.memory.getFile(path);
+        return this.getPatched(file);
     }
 
     @Override
@@ -58,13 +63,15 @@ class BansoukouRepository extends Repository { // LinkRepository
         if (bansoukouFile.isFile()) {
             list.remove(bansoukouFile);
         }
-        list.replaceAll(file -> {
-            Path patched = this.patches.get(file.toPath().toAbsolutePath());
-            if (patched == null) {
-                return file;
-            }
-            return patched.toFile();
-        });
+        list.replaceAll(this::getPatched);
+    }
+
+    private File getPatched(File file) {
+        Path patched = this.patches.get(file.toPath().toAbsolutePath());
+        if (patched == null) {
+            return file;
+        }
+        return patched.toFile();
     }
 
 }
