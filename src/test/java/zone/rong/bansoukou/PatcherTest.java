@@ -125,4 +125,33 @@ public class PatcherTest {
         Files.setLastModifiedTime(patch, FileTime.fromMillis(Files.getLastModifiedTime(cache).toMillis() + 5000L));
         Assertions.assertTrue(Bansoukou.needsPatching(patch, cache), "patch newer than cache => needs patching");
     }
+
+    @Test
+    void needsPatchingWhenCacheCorrupted(@TempDir Path dir) throws IOException {
+        Path original = dir.resolve("mod.jar");
+        Path patch = dir.resolve("patch.zip");
+        Path cache = dir.resolve("cache.jar");
+        writeZip(original, originalContents());
+        writeZip(patch, patchContents());
+
+        Bansoukou.patchJar(original, patch, cache);
+        Files.setLastModifiedTime(cache, FileTime.fromMillis(Files.getLastModifiedTime(patch).toMillis() + 5000L));
+        Assertions.assertFalse(Bansoukou.needsPatching(patch, cache), "intact cache => up to date");
+
+        Files.write(cache, new byte[0]); // Truncated jar, as left behind by an interrupted patch
+        Files.setLastModifiedTime(cache, FileTime.fromMillis(Files.getLastModifiedTime(patch).toMillis() + 5000L));
+        Assertions.assertTrue(Bansoukou.needsPatching(patch, cache), "corrupted cache => needs patching");
+    }
+
+    @Test
+    void failedPatchLeavesNoCacheBehind(@TempDir Path dir) throws IOException {
+        Path original = dir.resolve("mod.jar");
+        Path patch = dir.resolve("patch.zip");
+        Path cache = dir.resolve("cache.jar");
+        writeZip(original, originalContents());
+        Files.write(patch, bytes("not a zip"));
+
+        Assertions.assertThrows(IOException.class, () -> Bansoukou.patchJar(original, patch, cache));
+        Assertions.assertFalse(Files.exists(cache.resolveSibling(cache.getFileName() + ".tmp")), "no temporary jar left behind");
+    }
 }

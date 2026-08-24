@@ -47,8 +47,21 @@ public class Bansoukou {
         }
     }
 
+    // A cached jar that is truncated, empty or otherwise unreadable must be rebuilt, no matter how recent it is.
+    static boolean isReadableZip(Path jar) {
+        try (ZipFile ignored = new ZipFile(jar.toFile())) {
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     static boolean needsPatching(Path patchSource, Path cacheJar) throws IOException {
         if (!Files.exists(cacheJar)) {
+            return true;
+        }
+        if (!isReadableZip(cacheJar)) {
+            LOGGER.warn("Cached jar {} is corrupted, rebuilding it.", cacheJar);
             return true;
         }
         FileTime cacheTime = Files.getLastModifiedTime(cacheJar);
@@ -79,34 +92,43 @@ public class Bansoukou {
     }
 
     static void patchJar(Path originalJar, Path patchSource, Path cacheJar) throws IOException {
-        Files.copy(originalJar, cacheJar, StandardCopyOption.REPLACE_EXISTING);
+        Path workJar = cacheJar.resolveSibling(cacheJar.getFileName() + ".tmp");
+        try {
+            Files.copy(originalJar, workJar, StandardCopyOption.REPLACE_EXISTING);
 
-        // Remove signature-related files
-        try (FileSystem cacheFileSystem = FileSystems.newFileSystem(cacheJar, null)) {
-            Path metaInf = cacheFileSystem.getPath("/META-INF");
-            if (Files.exists(metaInf) && Files.isDirectory(metaInf)) {
-                try (Stream<Path> walk = Files.list(metaInf)) {
-                    walk.filter(path -> {
-                        String name = path.getFileName().toString().toLowerCase();
-                        return name.endsWith(".sf") || name.endsWith(".rsa") || name.endsWith(".dsa");
-                    }).forEach(path -> {
-                        try {
-                            Files.delete(path);
-                        } catch (IOException e) {
-                            throw new RuntimeException("Failed to delete " + path);
-                        }
-                    });
+            try (FileSystem jarFs = FileSystems.newFileSystem(workJar, null)) {
+                // Remove signature-related files
+                Path metaInf = jarFs.getPath("/META-INF");
+                if (Files.exists(metaInf) && Files.isDirectory(metaInf)) {
+                    try (Stream<Path> walk = Files.list(metaInf)) {
+                        walk.filter(path -> {
+                            String name = path.getFileName().toString().toLowerCase();
+                            return name.endsWith(".sf") || name.endsWith(".rsa") || name.endsWith(".dsa");
+                        }).forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (IOException e) {
+                                throw new RuntimeException("Failed to delete " + path);
+                            }
+                        });
+                    }
+                }
+
+                // Patch over files
+                if (Files.isDirectory(patchSource)) {
+                    patchFromDirectory(patchSource, jarFs);
+                } else {
+                    patchFromZip(patchSource, jarFs);
                 }
             }
-        }
 
-        // Patch over files
-        try (FileSystem jarFs = FileSystems.newFileSystem(cacheJar, null)) {
-            if (Files.isDirectory(patchSource)) {
-                patchFromDirectory(patchSource, jarFs);
-            } else {
-                patchFromZip(patchSource, jarFs);
+            try {
+                Files.move(workJar, cacheJar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(workJar, cacheJar, StandardCopyOption.REPLACE_EXISTING);
             }
+        } finally {
+            Files.deleteIfExists(workJar);
         }
     }
 
@@ -184,6 +206,10 @@ public class Bansoukou {
                     continue;
                 }
                 Path originalJar = MOD_DIRECTORY.resolve(patchName);
+                if (!Files.isRegularFile(originalJar)) {
+                    LOGGER.error("{} does not exist in mods/, skipping patch {}.", patchName, fileName);
+                    continue;
+                }
                 Path cachedJar = CACHE_BANSOUKOU_DIRECTORY.resolve(patchName);
                 if (needsPatching(patchFile, cachedJar)) {
                     patchJar(originalJar, patchFile, cachedJar);
