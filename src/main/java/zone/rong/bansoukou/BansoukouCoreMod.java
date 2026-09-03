@@ -13,8 +13,15 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 
     static File source;
 
+    private static boolean loaded;
+
+    private final boolean duplicate;
+
     public BansoukouCoreMod() {
-        if (CleanBansoukou.ran) {
+        this.duplicate = loaded;
+        loaded = true;
+
+        if (this.duplicate || CleanBansoukou.ran) {
             return;
         }
 
@@ -34,7 +41,7 @@ public class BansoukouCoreMod implements IFMLLoadingPlugin {
 
     @Override
     public String getModContainerClass() {
-        return "zone.rong.bansoukou.BansoukouMod";
+        return this.duplicate ? null : "zone.rong.bansoukou.BansoukouMod";
     }
 
     @Nullable

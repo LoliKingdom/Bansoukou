@@ -59,15 +59,13 @@ class BansoukouRepository extends Repository { // LinkRepository
 
     @Override
     public void filterLegacy(List<File> list) {
-        File bansoukouFile = location();
-        if (bansoukouFile.isFile()) {
-            list.remove(bansoukouFile);
-        }
+        Path bansoukouFile = location().toPath().toAbsolutePath().normalize();
+        list.removeIf(file -> file.toPath().toAbsolutePath().normalize().equals(bansoukouFile));
         list.replaceAll(this::getPatched);
     }
 
     private File getPatched(File file) {
-        Path patched = this.patches.get(file.toPath().toAbsolutePath());
+        Path patched = this.patches.get(file.toPath().toAbsolutePath().normalize());
         if (patched == null) {
             return file;
         }

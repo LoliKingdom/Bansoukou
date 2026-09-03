@@ -25,7 +25,7 @@ public class CleanBansoukou {
             int replaced = 0;
             ListIterator<File> iterator = list.listIterator();
             while (iterator.hasNext()) {
-                Path replacement = bansoukou.get(iterator.next().toPath().toAbsolutePath());
+                Path replacement = bansoukou.get(iterator.next().toPath().toAbsolutePath().normalize());
                 if (replacement != null) {
                     iterator.set(replacement.toFile());
                     if (++replaced == count) {

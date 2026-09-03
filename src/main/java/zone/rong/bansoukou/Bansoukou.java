@@ -217,7 +217,7 @@ public class Bansoukou {
                 } else {
                     LOGGER.info("{} is up to date, patching not needed.", patchName);
                 }
-                patch.put(originalJar.toAbsolutePath(), cachedJar);
+                patch.put(originalJar.toAbsolutePath().normalize(), cachedJar);
             }
         } catch (IOException e) {
             throw new RuntimeException("Unable to gather bansoukou patches", e);
