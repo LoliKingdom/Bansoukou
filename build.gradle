@@ -166,20 +166,25 @@ processResources {
     def filterList = ['mcmod.info', 'pack.mcmeta']
     filterList.addAll(propertyStringList('mixin_configs').collect(config -> "mixins.${config}.json" as String))
 
+    def expansions = [
+            'mod_id': propertyString('mod_id'),
+            'mod_name': propertyString('mod_name'),
+            'mod_version': propertyString('mod_version'),
+            'mod_description': propertyString('mod_description'),
+            'mod_authors': propertyStringList('mod_authors', ',').join(', '),
+            'mod_credits': propertyString('mod_credits'),
+            'mod_url': propertyString('mod_url'),
+            'mod_update_json': propertyString('mod_update_json'),
+            'mod_logo_path': propertyString('mod_logo_path'),
+            'mixin_refmap': propertyString('mixin_refmap'),
+            'mixin_package': propertyString('mixin_package')
+    ]
+
+    inputs.property 'filterList', filterList
+    inputs.property 'expansions', expansions
+
     filesMatching(filterList) { fcd ->
-        fcd.expand(
-                'mod_id': propertyString('mod_id'),
-                'mod_name': propertyString('mod_name'),
-                'mod_version': propertyString('mod_version'),
-                'mod_description': propertyString('mod_description'),
-                'mod_authors': "${propertyStringList('mod_authors', ',').join(', ')}",
-                'mod_credits': propertyString('mod_credits'),
-                'mod_url': propertyString('mod_url'),
-                'mod_update_json': propertyString('mod_update_json'),
-                'mod_logo_path': propertyString('mod_logo_path'),
-                'mixin_refmap': propertyString('mixin_refmap'),
-                'mixin_package': propertyString('mixin_package')
-        )
+        fcd.expand(expansions)
     }
     
     if (propertyBool('use_access_transformer')) {
